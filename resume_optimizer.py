@@ -73,8 +73,9 @@ Bachelor of Science – Computer Science Honors \\
 
 \begin{itemize}[leftmargin=2.3em, label={}, itemsep=0pt, topsep=0pt, parsep=0pt]
     \item \textbf{Coursework:} Multivariable Calculus, Linear Algebra, Probability, Data Structures, Machine Learning, Algorithms
-    \item \textbf{Honours/Awards:} Salutatorian (2/126), Doug Owram Scholar, Dean's List, 2x UKMT Challenge Silver
+    \item \textbf{Honours/Awards:} Salutatorian (2/256), Regional Excellence Scholar, Dean's List, 2x UKMT Challenge Silver
 \end{itemize}
+
 
 
 % Experience
@@ -83,8 +84,8 @@ Bachelor of Science – Computer Science Honors \\
 \noindent \textbf{Kenya National Highways Authority}, Nairobi, KE \hfill June 2023 - August 2023 \\
 Software Engineering Intern \,\textbar\, Python, Django
 \begin{itemize}[leftmargin=5em, itemsep=0pt, topsep=0pt, parsep=0pt]
-    \item Built Python/R pipelines on 50M+ shots to geocode 200K+ addresses, compress commute times, and engineer panel features
-    \item Modeled how 10-min commute cuts reduce absence 1.8pp and lateness 1.6pp
+    \item Eliminated a primary source of GIS analysis inaccuracy by implementing custom model validation in the GeoDjango backend, rejecting 50+ erroneous out-of-boundary data points monthly.
+    \item Ensured greater than 99\% operational uptime for finance during critical 5-day closing periods by developing a Python script to automate system health checks and trigger pre-emptive support tickets.
 \end{itemize}
 
 % Projects
@@ -114,14 +115,14 @@ Software Engineering Intern \,\textbar\, Python, Django
 
 \noindent \textbf{Undergraduate AI Society} \,\textbar\, Vice President of External Affairs \hfill March 2025 - Present
 \begin{itemize}[leftmargin=5em, itemsep=0pt, topsep=0pt, parsep=0pt]
-    \item Developed a predictive ML pipeline using feature engineering to accurately forecast housing prices from raw data, achieving a cross-validated R² score of 0.78.
-    \item Constructed a reproducible ML pipeline using Scikit-learn to process raw housing data, standardizing missing value imputation and categorical encoding to prevent data leakage during cross-validation.
+    \item Bridged the industry-academia gap by curating the 'Career Highlights' series,  translating complex career roadmaps from Senior Directors and Professors into actionable advice for 50+ undergraduate attendees.
+    \item Demystified the graduate research pathway by recruiting a diverse panel (PhD, MSc, Prof), providing students with a comparative look at academic vs. industry R\&D roles
 \end{itemize}
     
 \noindent \textbf{Univeristy of Alberta Innovation Fund} \,\textbar\, AI Analyst \hfill August 2025 - Present
 \begin{itemize}[leftmargin=5em, itemsep=0pt, topsep=0pt, parsep=0pt]
-    \item Developed a predictive ML pipeline using feature engineering to accurately forecast housing prices from raw data, achieving a cross-validated R² score of 0.78.
-    \item Constructed a reproducible ML pipeline using Scikit-learn to process raw housing data, standardizing missing value imputation and categorical encoding to prevent data leakage during cross-validation.
+    \item Evaluated the technical stacks of 2 early-stage startups, identifying architectural risks in their AI integration strategies that directly informed the investment committee’s "Go/No-Go" decisions
+    \item Standardized technical assessment protocols by training a 5-person team on a declarative analysis framework, resulting in consistent, high-fidelity audit reports regarding the scalability and defensibility of prospective AI startup investments.
 \end{itemize}
 
 % Skills
