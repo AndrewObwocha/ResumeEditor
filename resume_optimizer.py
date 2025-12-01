@@ -245,7 +245,8 @@ if __name__ == "__main__":
         prompt = f"""
         You are an expert Resume Strategist.
         
-        GOAL: Rewrite the bullet points (\item) of this LaTeX section to target the Job Strategy.
+        GOAL: Edit the resume bullet points (\item) of this LateX section to include the hard and soft skills required (as identified by the job strategy)
+
         
         INPUTS:
         1. TARGET STRATEGY: 
@@ -258,15 +259,36 @@ if __name__ == "__main__":
         {original_chunk}
         
         INSTRUCTIONS:
-        - Rewrite the bullet points to demonstrate the Explicit and Implicit keywords from the Strategy.
-        - If Project Context is provided, pull specific technical proofs (libraries, metrics) from it that match the Job.
-        - If the original text looks like a duplicate/placeholder (e.g. repeated text in Leadership), INVENT new valid bullet points based on the Title/Role in the header.
+        - This resume is for Software Engineering roles for a University of Alberta student.
+        - The ‘spirit’ of each bullet point is a structure that resembles the format: [Catalyst] so executed [X relevant technical action] to enable [Y relevant business/engineering outcome]. 
+                Catalyst is the problem mention (this is optional and should only be included if not immediately obvious why an action was taken), technical action and outcome define most of the depth.
+                The specific semantics follow this idea but the actual written point can contextually invert or edit the framework to emphasise different elements depending on what is most important. 
+                Keeping the hiring managers F pattern in mind, put the section that would make them stop to read the point first.
+        - Possibly attached to either the technical action or/and the business/engineering outcome is a metric. A metric’s purpose is to add depth, credibility, and texture to them both and importantly considers the following:
+                - Whether it is quantitative or qualitative, the context of the scale of change is important. 
+                        A metric in a vacuum won’t mean much to somebody digesting the information but revealing the scale of the metric adds a depth to it. 
+                        So instead of numbers in a vaccum e.g. 3 companies, opt to use ratios, percentages, comparisons with the past etc.
+                - If the metric is quantitative, we want to avoid ambiguity with the units e.g. 30% improvement won’t mean much to anyone reading, instead, opt for real tangible units e.g. increased uptime by 3 days
+                - If the metric is qualitative, we want to emphasise the standards/protocols we raised/adopted as definitive proof of quality. It is important to describe the mechanism of execution that implies quality rather than a loosely attached metric. 
+                - The decision between a quantitative and qualitative metric is situational. As a general rule of thumb, for actions and outcomes I struggle to map a clear metric to without it sounding inflated grandiosity, I opt for qualitative, otherwise quantitative.
+        - When considering the technical action taking, this is where we showcase our skills and even more importantly, our relevant skills. 
+                Mention technical resources relevant to the job description that signal your ability as a developer, and emphasise actions impactful to the scope of work in the job description. 
+                Also, for clarity, these actions must be grounded in daily reality, not just high-level theory. 
+                Leverage the project context if provided, pull specific technical proofs (libraries, metrics) from it that match the Job.
+                This framework appears to lean heavily on individual work so its important that at least once in the resume, one of the technical action is the act of collaboration itself and team involvement
+        - When considering the business/engineering outcome, sometimes, the "Y Business Outcome" can be about gains, stability, or exploration. 
+                Gains is self explanatory about making a system more optimal. 
+                Stability is also a valid outcome as it shows you are not a risky candidate so consider adherence to best practices a valid "Outcome" in itself. 
+                Exploration shows initiative to learn relevant technologies and skills to keep up with the industry.
+        - In an ideal world, the word count of the bullet point is a multiple 15 and no more than 30 i.e it is either 15 or 30 words so that it can fill up the full line across the page.
+        - Most importantly, this framework is not a rigid line by line analysis of each bullet point. Consider this as a tradeoff across an entire resume. 
+                Some lines might have some aspects while others dont. Some lines might prioritize some aspects while others compensate for what those lines didn’t focus on. 
+                It’s a balancing act across the entire resume so don’t rigidly try to make every line have every single element.
         - STRICTLY PRESERVE all LaTeX tags (\noindent, \\textbf, \hfill, [leftmargin...]).
         - Do not output markdown fences (```). Return raw LaTeX only.
         """
 
         try:
-            # FIX: Using Gemini Syntax
             response = model.generate_content(prompt)
             cleaned = response.text.strip()
             return cleaned.replace("```latex", "").replace("```", "")
