@@ -1,128 +1,144 @@
-
+"""
+Resume optimization module for tailoring resume content to job requirements.
+"""
 import re
-from config import settings
-from config.templates import RESUME_LATEX
+import logging
+from typing import Dict, Tuple
 
-def optimize_resume(context, model):
-    """
-    context: dict containing 'job_strategy', 'readmes', 'job_text'
-    model: Gemini model instance
-    """
-    print("\n[Resume Agent] Optimizing bullet points...")
+from src.templates.templates import RESUME_LATEX
+from src.prompts import RESUME_OPTIMIZER_PROMPT
+from src.utils.constants import (
+    LATEX_SECTION_PATTERN,
+    THOUGHTS_START,
+    THOUGHTS_END,
+    LATEX_START,
+    LATEX_END
+)
+from src.services.gemini_service import GeminiService
+
+logger = logging.getLogger(__name__)
+
+
+class ResumeOptimizer:
+    """Optimizes resume content using AI and project context."""
     
-    def rewrite_block(match):
-        original_chunk = match.group(0)
-        
-        # 1. SKIP Check (Education, Headers, etc.)
-        if any(keyword in original_chunk for keyword in settings.SKIP_KEYWORDS):
-            return original_chunk
-
-        # 2. RAG Context Injection
-        rag_context = ""
-        for title, doc in context['readmes'].items():
-            if title in original_chunk:
-                rag_context = f"\nPROJECT README (Documentation):\n{doc}\n"
-                break
-        
-        # 3. Prompting
-        prompt = f"""
-        You are a Senior Software Engineering Resume Reviewer.
-        
-        GOAL: Optimize the LaTeX bullet points for a specific section to target a Job Strategy.
-        
-        INPUT DATA:
-        1. TARGET JOB STRATEGY: 
-        {context['job_strategy']}
-        
-        2. PROJECT DOCS (Truth Source):
-        {rag_context if rag_context else "No external docs. Rely strictly on the Original Text."}
-        
-        3. ORIGINAL LATEX SECTION:
-        {original_chunk}
-        
-        ---
-        
-        ### INSTRUCTION FRAMEWORK
-        
-        **1. THE STRUCTURAL FORMULA**
-        Every bullet point must follow this logical flow (though you may vary the phrasing):
-        `[Action Verb] + [Specific Technical Implementation (Libraries/Patterns)] + [Quantifiable Engineering Outcome]`
-        - *Bad:* "Wrote code for the backend."
-        - *Good:* "Refactored the monolithic backend into Microservices using Django, reducing deployment time by 40%."
-        
-        **2. METRIC DECISION TREE**
-        - *If you have hard numbers:* Use them, but add context (e.g., don't say "30 users," say "scaled to 30k concurrent users").
-        - *If you lack hard numbers:* Use **Relative Metrics** (e.g., "reduced latency by ~20%", "eliminated N+1 query bottlenecks").
-        - *If purely qualitative:* Cite the **Standard** or **Mechanism** (e.g., "ensured 100% compliance with ISO 27001," "enforced strict CI/CD linting rules").
-        
-        **3. RELEVANCY & SKILLS**
-        - Inject keywords from the **TARGET STRATEGY** naturally.
-        - Ensure actions are grounded in reality (e.g., "Deployed via Docker," "Cached with Redis").
-        - **Teamwork Check:** Ensure at least one bullet point implies collaboration (e.g., "Standardized API protocols for the frontend team," "Conducted code reviews").
-        
-        **4. VISUAL DENSITY**
-        - Aim for "Full Line" density (approx. 20-35 words per bullet). 
-        - Avoid short, weak points. Combine two weak points into one strong narrative if necessary.
-
-        ---
-        
-        ### EXAMPLES 
-        
-        **Input:** "\item Built a web app using React."
-        **Output:** "\item Architected a responsive Single Page Application using \textbf React and Redux, improving client-side state management and reducing page load times by 30\%."
-
-        **Input:** "\item Fixed bugs in the database."
-        **Output:** "\item Optimized SQL query performance by implementing composite indexes in \textbf PostgreSQL, cutting average query execution time from 500ms to 50ms."
-
-        ---
-        
-        ### EXECUTION STEP
-        
-        Perform the rewrite. 
-        - STRICTLY PRESERVE all LaTeX tags (\noindent, \\textbf, \hfill, [leftmargin...]).
-        - DO NOT output the instructions or "meta-text" (like [Action]).
-        - DO NOT invent facts not supported by the Input Data or plausible inference.
-        
-        Output format:
-        :::THOUGHTS:::
-        (Briefly explain your strategy: which keywords you included and why.)
-        :::END_THOUGHTS:::
-        
-        :::LATEX:::
-        (The valid LaTeX code)
-        :::END_LATEX:::
+    def __init__(self, gemini_service: GeminiService):
         """
-
-        try:
-            response = model.generate_content(prompt)
-            raw_text = response.text
-            
-            # 4. Parsing Logic
-            # We extract the thoughts to print to console, and the latex to save to file.
-            thoughts_match = re.search(r":::THOUGHTS:::(.*?):::END_THOUGHTS:::", raw_text, re.DOTALL)
-            latex_match = re.search(r":::LATEX:::(.*?):::END_LATEX:::", raw_text, re.DOTALL)
-            
-            if thoughts_match:
-                print(f"\n  [AI Reasoning] for section starting: '{original_chunk.splitlines()[1][:30]}...'")
-                print(f"  {thoughts_match.group(1).strip()[:200]}...") # Print first 200 chars of thought
-            
-            if latex_match:
-                cleaned_latex = latex_match.group(1).strip()
-                # Double check: ensure no markdown fences lingered
-                cleaned_latex = cleaned_latex.replace("```latex", "").replace("```", "")
-                return cleaned_latex
-            else:
-                # Fallback: If AI messed up format, try to return raw or original
-                print("  [!] Warning: AI didn't follow output format. Returning raw cleanup.")
-                return raw_text.replace("```latex", "").replace("```", "").strip()
-
-        except Exception as e:
-            print(f"    [!] Error optimizing block: {e}")
-            return original_chunk
-
-    # Execute Regex Replacement
-    regex_pattern = r"((?:\\noindent\s*)?\\textbf\{.*?\}.*?\\begin\{itemize\}.*?\\end\{itemize\})"
+        Initialize the resume optimizer.
+        
+        Args:
+            gemini_service: Service for AI content generation
+        """
+        self.gemini_service = gemini_service
+        self.sections_modified = 0
     
-    # Note: We run this on the RESUME_LATEX imported from templates
-    final_latex = re.sub(regex_pattern, rewrite_block, RESUME_LATEX, flags=re.DOTALL)
-    return final_latex
+    async def optimize_resume(self, context: Dict) -> Tuple[str, int]:
+        """
+        Optimize resume sections based on job strategy and project documentation.
+        
+        Args:
+            context: Dictionary containing:
+                - job_strategy: Application strategy text
+                - readmes: Dictionary of project README documentation
+                - job_description: Job description text
+                
+        Returns:
+            Tuple of (optimized_latex_content, sections_count)
+        """
+        logger.info("[PROGRESS] Optimizing resume bullet points")
+        self.sections_modified = 0
+        self.context = context
+        
+        # Find all resume sections using regex
+        async def rewrite_block_async(match):
+            return await self._rewrite_block(match)
+        
+        # Process all sections
+        final_latex = RESUME_LATEX
+        sections = list(re.finditer(LATEX_SECTION_PATTERN, RESUME_LATEX, flags=re.DOTALL))
+        
+        for match in sections:
+            original_chunk = match.group(0)
+            optimized_chunk = await self._rewrite_block_wrapper(original_chunk)
+            final_latex = final_latex.replace(original_chunk, optimized_chunk, 1)
+            self.sections_modified += 1
+        
+        logger.debug(f"[DEBUG] Resume optimization: {self.sections_modified} sections processed")
+        return final_latex, self.sections_modified
+    
+    async def _rewrite_block_wrapper(self, original_chunk: str) -> str:
+        """
+        Wrapper to handle block rewriting with proper context.
+        
+        Args:
+            original_chunk: Original LaTeX section
+            
+        Returns:
+            Optimized LaTeX section
+        """
+        try:
+            rag_context = self._get_rag_context(original_chunk)
+            
+            prompt = RESUME_OPTIMIZER_PROMPT.format(
+                job_strategy=self.context['job_strategy'],
+                rag_context=rag_context if rag_context else "No external docs. Rely strictly on the Original Text.",
+                original_chunk=original_chunk
+            )
+            
+            response = await self.gemini_service.generate_content(prompt)
+            
+            return self._parse_ai_response(response, original_chunk)
+            
+        except Exception as e:
+            logger.debug(f"[DEBUG] Error optimizing block - using original: {e}")
+            return original_chunk
+    
+    def _get_rag_context(self, original_chunk: str) -> str:
+        """
+        Get relevant README context for a resume section.
+        
+        Args:
+            original_chunk: The LaTeX section being optimized
+            
+        Returns:
+            Relevant README content or empty string
+        """
+        readmes = self.context.get('readmes', {})
+        
+        for title, doc in readmes.items():
+            if title in original_chunk:
+                return f"\nPROJECT README (Documentation):\n{doc}\n"
+        
+        return ""
+    
+    def _parse_ai_response(self, raw_text: str, original_chunk: str) -> str:
+        """
+        Parse AI response to extract LaTeX content.
+        
+        Args:
+            raw_text: Raw response from AI
+            original_chunk: Original content as fallback
+            
+        Returns:
+            Extracted LaTeX content
+        """
+        # Extract thoughts (for logging)
+        thoughts_pattern = f"{THOUGHTS_START}(.*?){THOUGHTS_END}"
+        thoughts_match = re.search(thoughts_pattern, raw_text, re.DOTALL)
+        
+        if thoughts_match:
+            section_preview = original_chunk.splitlines()[1][:40] if len(original_chunk.splitlines()) > 1 else "section"
+            logger.debug(f"[DEBUG] AI reasoning for '{section_preview}': {thoughts_match.group(1).strip()[:200]}")
+        
+        # Extract LaTeX content
+        latex_pattern = f"{LATEX_START}(.*?){LATEX_END}"
+        latex_match = re.search(latex_pattern, raw_text, re.DOTALL)
+        
+        if latex_match:
+            cleaned_latex = latex_match.group(1).strip()
+            # Remove any stray markdown code fences
+            cleaned_latex = cleaned_latex.replace("```latex", "").replace("```", "")
+            return cleaned_latex
+        else:
+            logger.debug("[DEBUG] AI response format not recognized - using cleaned raw response")
+            return raw_text.replace("```latex", "").replace("```", "").strip()

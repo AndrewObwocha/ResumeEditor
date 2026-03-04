@@ -1,63 +1,114 @@
-from config.templates import COVER_LETTER_LATEX
+"""
+Cover letter generation module for creating personalized cover letters.
+"""
+import logging
+from typing import Dict
 
-def write_cover_letter(context, model, meta_data):
-    """
-    context: dict containing 'job_strategy', 'readmes', 'job_text'
-    model: Gemini model instance
-    meta_data: dict containing 'company', 'role', 'address' (Passed from main.py)
-    """
-    print("\n[Cover Letter Agent] Drafting narrative...")
+from src.templates.templates import COVER_LETTER_LATEX
+from src.prompts import COVER_LETTER_PROMPT
+from src.services.gemini_service import GeminiService
+from src.models.context import JobMetadata
 
-    # 1. Prepare Context
-    all_projects_context = "\n".join([f"PROJECT: {k}\nDETAILS: {v[:1500]}" for k,v in context['readmes'].items()])
+logger = logging.getLogger(__name__)
 
-    # 3. Generate Body Content
-    print("  [AI] Writing Body Content...")
-    body_prompt = f"""
-    You are an expert Copywriter. Write the BODY CONTENT for a cover letter.
 
-    GOAL: Write a cover letter in 300 words with my authentic voice as a University of Alberta student for the associated job.
-
+class CoverLetterGenerator:
+    """Generates personalized cover letters using AI and project context."""
     
-    INPUTS:
-    1. JOB DESCRIPTION: {context['job_text'][:5000]}
-    2. STRATEGY: {context['job_strategy']}
-    3. COMPANY: {meta_data.get('company')}
-    4. MY PROJECTS: 
-    {all_projects_context}
+    def __init__(self, gemini_service: GeminiService):
+        """
+        Initialize the cover letter generator.
+        
+        Args:
+            gemini_service: Service for AI content generation
+        """
+        self.gemini_service = gemini_service
     
-    INSTRUCTIONS:
-    - This cover letter is for the associated job.
-    - The candidate (me) is a second-year Computer Science student at the University of Alberta who is eager to learn from professionals and contribute to the industry.
-            With this in mind, any writing done should emphasise my authentic voice to reflect my student mindset and eagerness.
-    - The overarching result of the cover letter is to convince the recruiter of my technical curiosity in the field relevant to the role, my problem-solving initiative relevant to the role and cultural fit with the company.
-            To achieve this, I need to research the scope and attributes of this role. Find information relevant to my needs and provide me with context/perspective as to what you could find, if anything, on the role and company before proceeding. 
-    - The audience/reader is likely the company's non-technical recruitment team that values effective communication of value that allows them to understand my technical aptitude. 
-            With this in mind, dont target buzzwords but an elegant intersection between technical showcasing but lay enough for the non-technical to understand. 
-            Any writing done should maintain the idea of this audience.
-    - When writing the hook, the main principle to follow is that if I were to apply to a different job using this same hook, would it still make sense? If so, its not tailored and needs editing. 
-            The main spirit of this section is to capture attention with the research I have done and build genuine connection to myself. 
-            Therefore, I need to show them that I not only know what to emphasise, but why I need to emphasise it to connect to the role and them. 
-            If you do not have enough information on the role, err on the side of caution and provide a broadly acceptable hook such as state excitement for {meta_data.get('company')} and the {meta_data.get('role')} role.
-    - For subsequent points, there are a few principles to adhere to beyond the natural authentic voice and connection to MY PROJECTS (which should be explicitly mentioned to prove I have the skills in the Strategy)
-            - Firstly, they serve as a body of work for the research I have done. The main selling point is the company knowledge I can display, so each paragraph begins with a nugget of information (I can potentially influence as an intern) about the company. 
-                The following explanation is about how the 3 pillars: Technical Curiosity, Problem Solving, and Cultural Fit can provide value to that nugget of company information.
-            - Secondly, the more granular and specific I can go, the better. To achieve this, I need to understand specifically the context of that company information. 
-                In this context, my explanations need to be ultra-granular. A good filter is that the value must be something tangible and realistically interactable with, whether it's physical, digital or conceptual. 
-                If I cant interact with it, it is not granular enough. Keep in mind, value can be interpreted at multiple levels of granularity/abstraction. I am not interested in high-level, superficial, abstract value; I want the granular, nitty-gritty value. 
-                Virtually, think of this as official documentation rather than a brief overview.
-            - Thirdly, the language needs to sound natural and authentic but graceful, professionala and purposeful.
-            - Fourthly, the length is preferably concise while still remaining impactful. This is flexible and dependent on the context, but in general, concision is valued.
-    - FORMAT: Return ONLY the LaTeX text for the paragraphs. Use \\ (double backslash) for paragraph breaks. Do NOT include headers or \begin{{document}}.
-    """
-
-    body_response = model.generate_content(body_prompt)
-    body_content = body_response.text.replace("```latex", "").replace("```", "").strip()
-
-    # 3. Inject into Template
-    final_cl = COVER_LETTER_LATEX.replace("%BODY_CONTENT%", body_content)
-    final_cl = final_cl.replace("%COMPANY_NAME%", meta_data.get('company', "Hiring Manager"))
-    final_cl = final_cl.replace("%JOB_TITLE%", meta_data.get('role', "Software Engineer"))
-    final_cl = final_cl.replace("%COMPANY_ADDRESS%", meta_data.get('address', ""))
+    async def generate_cover_letter(self, context: Dict) -> str:
+        """
+        Generate a personalized cover letter based on job requirements.
+        
+        Args:
+            context: Dictionary containing:
+                - job_strategy: Application strategy text
+                - job_description: Job description text
+                - readmes: Dictionary of project README documentation
+                - metadata: JobMetadata object
+                
+        Returns:
+            Complete LaTeX cover letter content
+        """
+        logger.info("[PROGRESS] Generating cover letter")
+        
+        metadata: JobMetadata = context['metadata']
+        
+        # Build RAG context from READMEs
+        rag_context = self._build_rag_context(context.get('readmes', {}))
+        
+        # Get job description excerpt (first 1000 chars)
+        job_desc_excerpt = context['job_description'][:1000]
+        
+        # Format prompt
+        prompt = COVER_LETTER_PROMPT.format(
+            job_strategy=context['job_strategy'],
+            company=metadata.company,
+            role=metadata.role,
+            address=metadata.address if metadata.address else "N/A",
+            rag_context=rag_context,
+            job_description_excerpt=job_desc_excerpt
+        )
+        
+        # Generate cover letter body
+        body_content = await self.gemini_service.generate_content(prompt)
+        
+        # Fill in template
+        cover_letter = self._fill_template(
+            body_content=body_content,
+            metadata=metadata
+        )
+        
+        logger.debug("[DEBUG] Cover letter generation complete")
+        return cover_letter
     
-    return final_cl
+    def _build_rag_context(self, readmes: Dict[str, str]) -> str:
+        """
+        Build project context from README files.
+        
+        Args:
+            readmes: Dictionary of project titles to README content
+            
+        Returns:
+            Formatted project context string
+        """
+        if not readmes:
+            return "No project documentation available."
+        
+        context_parts = []
+        for title, content in list(readmes.items())[:3]:  # Use top 3 projects
+            # Truncate each README to 1000 chars
+            truncated = content[:1000]
+            context_parts.append(f"**{title}**\n{truncated}")
+        
+        return "\n\n".join(context_parts)
+    
+    def _fill_template(self, body_content: str, metadata: JobMetadata) -> str:
+        """
+        Fill cover letter template with generated content and metadata.
+        
+        Args:
+            body_content: AI-generated cover letter body
+            metadata: Job metadata for placeholders
+            
+        Returns:
+            Complete LaTeX document
+        """
+        # Start with template
+        cover_letter = COVER_LETTER_LATEX
+        
+        # Replace placeholders
+        cover_letter = cover_letter.replace("%COMPANY_NAME%", metadata.company)
+        cover_letter = cover_letter.replace("%COMPANY_ADDRESS%", metadata.address if metadata.address else "")
+        cover_letter = cover_letter.replace("%JOB_TITLE%", metadata.role)
+        cover_letter = cover_letter.replace("%BODY_CONTENT%", body_content)
+        
+        return cover_letter
