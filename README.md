@@ -18,17 +18,13 @@ Getting started is simple—no complex setup required.
 **Prerequisites**: Python 3.10+ and a free Google Gemini API key ([get one here](https://aistudio.google.com/apikey))
 
 ```bash
-# Clone the repository
 git clone https://github.com/AndrewObwocha/ResumeEditor.git
 cd ResumeEditor
 
-# Run the setup (creates virtual environment and installs dependencies)
 make setup
 
-# Create a .env file with your API key
 echo "GEMINI_API_KEY=your_api_key_here" > .env
 
-# Start generating your tailored applications
 make run
 ```
 
@@ -47,13 +43,10 @@ Since this project follows a modular event-driven architecture, extending it is 
 **For developers:**
 
 ```bash
-# Install development dependencies
 pip install -r requirements.txt
 
-# Run tests
 make test
 
-# Run the application
 make run
 ```
 
