@@ -1,46 +1,84 @@
-# Resume Editor: AI-Powered LaTeX Resume and Cover Letter Generator
+# ResumeEditor: AI-Powered Application Material Generator
 
-## Automatically tailor your application to any job description.
+## Generate tailored resumes and cover letters in seconds using AI and your project experience.
 
-This project is a command-line application that leverages the Google Gemini Pro API to generate customized LaTeX resumes and cover letters. The tool takes a job description as input, analyzes it to create a strategic plan, and then rewrites a master resume template to align with the specific role. It uses local project README files as a knowledge base (RAG) to ensure technical details are accurate.
+ResumeEditor is a Python CLI application leveraging Google Gemini API for intelligent content generation with async event-driven architecture. It fetches job descriptions via Jina Reader, analyzes requirements, and generates customized LaTeX resumes and cover letters. The system uses GitHub README files as a RAG knowledge base to ground outputs in real project experience, ensuring technical accuracy.
 
--   **AI-Powered Resume Optimization:** Rewrites resume bullet points to match keywords and requirements from the job description.
--   **Dynamic Cover Letter Generation:** Creates a personalized and authentic cover letter based on the job and your project experience.
--   **RAG for Technical Accuracy:** Uses your own project documentation (READMEs) as a source of truth to ground the AI's output in reality.
--   **Web Scraper Integration:** Automatically fetches job descriptions from URLs using the Jina Reader API.
--   **LaTeX Output:** Generates professional, ready-to-compile `.tex` files for both your resume and cover letter.
+- **AI-Powered Resume Optimization**: Intelligently rewrites bullet points to match job keywords and requirements
+- **Personalized Cover Letters**: Creates authentic letters based on job requirements and your project portfolio
+- **RAG-Enhanced Accuracy**: Leverages your project documentation as source-of-truth context
+- **One-Click Generation**: Fetch job descriptions from URLs or paste manually in seconds
+- **Professional LaTeX Output**: Ready-to-compile `.tex` files for polished applications
+- **Async Performance**: Concurrent operations for fast processing of large job descriptions
 
-## How to install and run this project
+## How to install and run ResumeEditor
 
-No complex setup is required. Ensure you have Python installed and an environment set up.
+Getting started is simple—no complex setup required.
+
+**Prerequisites**: Python 3.10+ and a free Google Gemini API key ([get one here](https://aistudio.google.com/apikey))
 
 ```bash
 # Clone the repository
-git clone https://github.com/{yourUsername}/ResumeEditor.git
+git clone https://github.com/AndrewObwocha/ResumeEditor.git
 cd ResumeEditor
 
-# Install dependencies
-pip install -r requirements.txt
+# Run the setup (creates virtual environment and installs dependencies)
+make setup
 
-# Set up your API key
-# Create a .env file in the root directory and add your Gemini API key:
-# GEMINI_API_KEY=your_api_key_here
+# Create a .env file with your API key
+echo "GEMINI_API_KEY=your_api_key_here" > .env
 
-# Run the application
-python main.py
+# Start generating your tailored applications
+make run
 ```
 
-## How to tweak this project for your own use cases
+That's it! Follow the prompts to paste a job description or enter a job posting URL. The app will generate your customized resume and cover letter in the `output/` folder.
 
-This tool is designed to be customized. To adapt it for your own profile, you should:
-1.  Modify the `config/templates.py` file to change the base LaTeX templates for your resume and cover letter.
-2.  Add your own project `README.md` files to a relevant directory that the tool can access to use as context.
-3.  Adjust the prompts in `src/resume.py` and `src/cover_letter.py` to change the tone, style, or logic of the AI agents.
+## How to customize and extend ResumeEditor
 
-## Find a bug?
+Since this project follows a modular event-driven architecture, extending it is straightforward.
 
-If you found an issue or would like to submit an improvement to this project, please submit an issue using the "Issues" tab above. If you would like to submit a PR with a fix, please reference the issue you created.
+**Key files to explore:**
+
+- `src/config.py` - Update `PROJECT_REPO_MAP` with your GitHub repositories
+- `src/templates/templates.py` - Customize personal information and LaTeX formatting
+- `src/prompts.py` - Adjust AI tone and strategy for generating content
+
+**For developers:**
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run tests
+make test
+
+# Run the application
+make run
+```
+
+The codebase uses async/await throughout with clear separation of concerns via the event bus pattern. See `src/events/events.py` for the event definitions and `src/infra/event_bus.py` for the pub/sub system. Each stage (resume optimization, cover letter generation, etc.) is a separate handler that listens for events and publishes new ones—making it easy to add new features.
+
+## Contributing
+
+We welcome contributions! Here's how to help:
+
+1. **Report issues**: Found a bug? Open an issue with reproduction steps and system info
+2. **Submit improvements**: Fork the repo, create a feature branch, and open a PR
+3. **Code guidelines**: Ensure all tests pass (`make test`) before submitting a PR
+4. **Documentation**: Help improve README, docstrings, or add examples
+
+When submitting a PR, please:
+
+- Create a descriptive title and reference any related issues
+- Include tests for new functionality
+- Run `make test` to validate your changes
+- Keep commits atomic and well-messaged
 
 ## License
 
 This project is licensed under the MIT License.
+
+---
+
+_Happy job hunting!_
